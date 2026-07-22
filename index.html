@@ -83,6 +83,7 @@
     // 月度数据文件会依次追加到此数组，确保离线页面不依赖网络请求。
     window.RESEARCH_REPORTS = [];
     window.RESEARCH_REPORT_MONTHS = [];
+    window.RESEARCH_REPORT_SOURCES = [];
   </script>
   <script>
     // 页面渲染逻辑：先串行读取本地月度文件，再展示日报数据。
@@ -286,18 +287,22 @@
         renderSidebar(); renderReport();
       }
 
-      /** 先加载清单，再按清单顺序加载月度文件。 */
+      /** 先加载清单，再按清单顺序加载日报数据文件。 */
       async function loadMonthlyReports() {
         try {
           await loadLocalScript('reports/manifest.js');
-          if (!Array.isArray(window.RESEARCH_REPORT_MONTHS)) {
-            throw new Error('月份清单格式不正确');
+          const explicitSources = Array.isArray(window.RESEARCH_REPORT_SOURCES) && window.RESEARCH_REPORT_SOURCES.length;
+          const sources = explicitSources
+            ? window.RESEARCH_REPORT_SOURCES
+            : (Array.isArray(window.RESEARCH_REPORT_MONTHS) ? window.RESEARCH_REPORT_MONTHS.map((month) => `reports/${month}.js`) : []);
+          if (!sources.length) {
+            throw new Error('日报数据清单为空');
           }
-          for (const month of window.RESEARCH_REPORT_MONTHS) {
-            if (typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month)) {
-              throw new Error('月份清单包含无效日期');
+          for (const source of sources) {
+            if (typeof source !== 'string' || !/^reports\/[\w./-]+\.js$/.test(source)) {
+              throw new Error('日报数据清单包含无效文件');
             }
-            await loadLocalScript(`reports/${month}.js`);
+            await loadLocalScript(source);
           }
           initialize();
         } catch (error) {
