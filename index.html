@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<!-- 本文件负责离线展示 reports 文件夹中的月度科研日报数据。 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>科研日报</title>
+  <style>
+    :root { --ink:#26312b; --muted:#697067; --paper:#fcfaf5; --canvas:#f2efe6; --line:#ded9cc; --accent:#758063; --soft:#eef0e7; --card:#fffdf8; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; color:var(--ink); background:var(--canvas); font-family:"Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; line-height:1.65; }
+    .app { display:grid; grid-template-columns:260px minmax(0, 1fr); min-height:100vh; }
+    .sidebar { position:sticky; top:0; align-self:start; height:100vh; padding:30px 20px; border-right:1px solid var(--line); background:#ece9df; overflow-y:auto; }
+    .brand { margin:0 0 28px; font:700 23px/1.2 Georgia, "Times New Roman", serif; letter-spacing:.02em; }
+    .brand small { display:block; margin-top:7px; color:var(--accent); font:600 11px/1.2 "Microsoft YaHei", sans-serif; letter-spacing:.14em; }
+    .date-list { display:grid; gap:8px; }
+    .date-button { width:100%; padding:11px 12px; border:1px solid transparent; border-radius:8px; color:var(--muted); background:transparent; text-align:left; font:inherit; cursor:pointer; }
+    .date-button:hover, .date-button:focus-visible { border-color:#bbc3ad; outline:none; background:#f7f5ee; }
+    .date-button[aria-current="date"] { color:var(--ink); border-color:#b5beaa; background:var(--soft); font-weight:700; }
+    main { width:min(920px, 100%); margin:0 auto; padding:42px 46px 70px; }
+    .notice { margin:0 0 20px; padding:12px 15px; border-left:4px solid #a18048; border-radius:4px; color:#5c4729; background:#fff8e9; font-size:14px; }
+    .eyebrow { margin:0 0 9px; color:var(--accent); font-size:12px; font-weight:700; letter-spacing:.16em; }
+    h1, h2, h3 { font-family:Georgia, "Times New Roman", "Songti SC", serif; line-height:1.25; }
+    h1 { margin:0; font-size:clamp(30px, 5vw, 46px); letter-spacing:-.025em; }
+    .generated { margin:10px 0 0; color:var(--muted); font-size:14px; }
+    .section-title { margin:42px 0 15px; font-size:24px; }
+    .brief-card { margin-top:30px; padding:24px; border:1px solid var(--line); border-radius:12px; background:#f3f5ed; }
+    .brief-card h2 { margin:0 0 12px; font-size:24px; }
+    .brief-card p { margin:0; color:var(--muted); line-height:1.85; }
+    .brief-card p + p { margin-top:11px; }
+    .brief-card strong { color:var(--ink); }
+    .priority-counts { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; margin-top:20px; }
+    .count-item { padding:11px 8px; border:1px solid var(--line); border-radius:9px; background:#fff; text-align:center; }
+    .count-label { display:block; color:var(--muted); font-size:12px; }
+    .count-value { display:block; margin-top:3px; color:var(--accent); font:700 19px/1.2 Georgia, "Times New Roman", serif; }
+    .top-picks { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; }
+    .top-card, .paper { border:1px solid var(--line); border-radius:12px; background:var(--card); box-shadow:0 1px 1px rgba(38,49,43,.03); }
+    .top-card { padding:19px; border-top:4px solid #a8b69c; }
+    .top-card span { color:var(--accent); font-size:11px; font-weight:700; letter-spacing:.12em; }
+    .top-card a, .paper-title a { color:var(--ink); text-decoration-color:#9da795; text-underline-offset:3px; }
+    .top-card h3 { margin:7px 0 0; font-size:20px; }
+    .paper-list { display:grid; gap:22px; }
+    .paper { padding:25px; }
+    .paper-header { display:flex; align-items:start; justify-content:space-between; gap:16px; }
+    .paper-index { margin:0 0 5px; color:var(--accent); font-size:12px; font-weight:700; letter-spacing:.13em; }
+    .paper-title { margin:0; font-size:27px; }
+    .priority { flex:none; padding:4px 9px; border:1px solid #c9d0be; border-radius:999px; color:#526047; background:#f0f3e9; font-size:12px; font-weight:700; }
+    .metadata { margin:15px 0 12px; color:var(--muted); font-size:14px; }
+    .field-label { margin:0 0 7px; color:var(--accent); font-size:13px; font-weight:700; }
+    .tags { display:flex; flex-wrap:wrap; gap:7px; margin:0; }
+    .tag { padding:3px 8px; border-radius:999px; color:#536148; background:var(--soft); font-size:12px; }
+    dl { margin:20px 0 0; display:grid; grid-template-columns:150px 1fr; border-top:1px solid #e8e4db; }
+    dt, dd { margin:0; padding:12px 0; border-bottom:1px solid #e8e4db; }
+    dt { color:var(--accent); font-size:13px; font-weight:700; }
+    dd { padding-left:18px; }
+    .empty { margin-top:54px; padding:36px; border:1px dashed #b9b9ae; border-radius:12px; color:var(--muted); text-align:center; background:rgba(255,253,248,.55); }
+    @media (max-width:760px) {
+      .app { display:block; }
+      .sidebar { position:static; width:100%; height:auto; padding:18px; border-right:0; border-bottom:1px solid var(--line); overflow:visible; }
+      .brand { margin:0 0 14px; font-size:21px; }
+      .date-list { display:flex; overflow-x:auto; gap:8px; padding-bottom:2px; }
+      .date-button { flex:0 0 auto; width:auto; white-space:nowrap; }
+      main { padding:29px 20px 48px; }
+      .top-picks { grid-template-columns:1fr; }
+      .paper { padding:19px; }
+      .paper-title { font-size:24px; }
+      .priority-counts { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      dl { grid-template-columns:1fr; }
+      dt { padding-bottom:2px; border-bottom:0; }
+      dd { padding:2px 0 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <p class="brand">科研日报<small>LLM / AGENT</small></p>
+      <nav id="date-list" class="date-list" aria-label="日报日期"></nav>
+    </aside>
+    <main id="content" aria-live="polite"></main>
+  </div>
+  <script>
+    // 月度数据文件会依次追加到此数组，确保离线页面不依赖网络请求。
+    window.RESEARCH_REPORTS = [];
+    window.RESEARCH_REPORT_MONTHS = [];
+  </script>
+  <script>
+    // 页面渲染逻辑：先串行读取本地月度文件，再展示日报数据。
+    (() => {
+      const content = document.getElementById('content');
+      const dateList = document.getElementById('date-list');
+      const labels = [
+        ['summary', '一句话总结'], ['importance', '问题'],
+        ['methodHighlights', '方法亮点'], ['limitations', '局限性'],
+        ['inspiration', '启发'], ['valueJudgment', '内容价值判断']
+      ];
+      let reports = [];
+      let activeDate = '';
+      let notices = [];
+
+      /** 将任意字段安全转换为页面可读文字。 */
+      function textOf(value) {
+        return typeof value === 'string' && value.trim() ? value.trim() : '待补充';
+      }
+
+      /** 将可能不完整的论文对象转为稳定的展示结构。 */
+      function normalizePaper(paper, index) {
+        const source = paper && typeof paper === 'object' ? paper : {};
+        const tags = Array.isArray(source.tags) && source.tags.length ? source.tags : ['待补充'];
+        return {
+          id: textOf(source.id) === '待补充' ? `paper-${index + 1}` : textOf(source.id),
+          title: textOf(source.title), url: textOf(source.url),
+          authorsAndInstitutions: textOf(source.authorsAndInstitutions), tags,
+          summary: textOf(source.summary), importance: textOf(source.importance),
+          methodHighlights: textOf(source.methodHighlights), limitations: textOf(source.limitations),
+          inspiration: textOf(source.inspiration), valueJudgment: textOf(source.valueJudgment),
+          priority: textOf(source.priority)
+        };
+      }
+
+      /** 验证、去重并排序手工维护的日报数据。 */
+      function normalizeReports(raw) {
+        if (!Array.isArray(raw)) return { reports: [], notices: ['数据格式不正确：RESEARCH_REPORTS 必须是日报数组。'] };
+        const seenDates = new Set();
+        const validReports = [];
+        const warnings = [];
+        raw.forEach((report, reportIndex) => {
+          if (!report || typeof report !== 'object') { warnings.push(`第 ${reportIndex + 1} 条日报格式不正确。`); return; }
+          if (typeof report.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(report.date)) { warnings.push(`第 ${reportIndex + 1} 条日报缺少有效 date。`); return; }
+          if (seenDates.has(report.date)) { warnings.push(`日期 ${report.date} 重复，已保留原数组中最先出现的一条。`); return; }
+          if (!Array.isArray(report.papers)) { warnings.push(`日期 ${report.date} 的 papers 必须是数组。`); return; }
+          if (!Array.isArray(report.topPicks)) { warnings.push(`日期 ${report.date} 的 topPicks 必须是数组。`); return; }
+          seenDates.add(report.date);
+          const brief = report.brief && typeof report.brief === 'object' ? report.brief : {};
+          validReports.push({
+            date: report.date, title: textOf(report.title), generatedAt: textOf(report.generatedAt),
+            brief: { summary: textOf(brief.summary), trendAssessment: textOf(brief.trendAssessment) },
+            topPicks: report.topPicks.filter((id) => typeof id === 'string'),
+            papers: report.papers.map(normalizePaper)
+          });
+        });
+        return { reports: validReports.sort((a, b) => b.date.localeCompare(a.date)), notices: warnings };
+      }
+
+      /** 在右侧显示当前状态或错误原因。 */
+      function showNotice(message) {
+        content.replaceChildren();
+        const box = document.createElement('section');
+        box.className = 'empty';
+        box.textContent = message;
+        content.append(box);
+      }
+
+      /** 串行加载一个本地脚本文件。 */
+      function loadLocalScript(source) {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = source;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error(`无法读取 ${source}`));
+          document.head.append(script);
+        });
+      }
+
+      /** 清空临时数据并展示本地数据文件的读取错误。 */
+      function showLoadError(error) {
+        window.RESEARCH_REPORTS = [];
+        window.RESEARCH_REPORT_MONTHS = [];
+        showNotice(`无法读取日报数据：${error.message}。请确认 reports 文件夹及月份文件完整。`);
+      }
+
+      /** 渲染左侧日期选择栏。 */
+      function renderSidebar() {
+        dateList.replaceChildren();
+        reports.forEach((report) => {
+          const button = document.createElement('button');
+          button.className = 'date-button';
+          button.type = 'button';
+          button.textContent = report.date;
+          if (report.date === activeDate) button.setAttribute('aria-current', 'date');
+          button.addEventListener('click', () => { activeDate = report.date; renderSidebar(); renderReport(); });
+          dateList.append(button);
+        });
+      }
+
+      /** 创建论文标题链接，避免把数据作为 HTML 插入。 */
+      function createTitle(paper) {
+        const heading = document.createElement('h3');
+        heading.className = 'paper-title';
+        if (paper.url !== '待补充') {
+          const link = document.createElement('a');
+          link.href = paper.url; link.target = '_blank'; link.rel = 'noreferrer'; link.textContent = paper.title;
+          heading.append(link);
+        } else {
+          heading.textContent = paper.title;
+        }
+        return heading;
+      }
+
+      /** 创建一条论文的十项点评卡片。 */
+      function createPaperCard(paper, index) {
+        const article = document.createElement('article');
+        article.className = 'paper';
+        const header = document.createElement('div');
+        header.className = 'paper-header';
+        const titleBlock = document.createElement('div');
+        const number = document.createElement('p');
+        number.className = 'paper-index'; number.textContent = `推荐论文 ${String(index + 1).padStart(2, '0')}`;
+        titleBlock.append(number, createTitle(paper));
+        const priority = document.createElement('span');
+        priority.className = 'priority'; priority.textContent = `优先级 ${paper.priority}`;
+        header.append(titleBlock, priority);
+        const metadata = document.createElement('p');
+        metadata.className = 'metadata'; metadata.textContent = `作者与机构：${paper.authorsAndInstitutions}`;
+        const tagLabel = document.createElement('p');
+        tagLabel.className = 'field-label'; tagLabel.textContent = '所属方向标签';
+        const tags = document.createElement('div');
+        tags.className = 'tags';
+        paper.tags.forEach((tag) => { const item = document.createElement('span'); item.className = 'tag'; item.textContent = tag; tags.append(item); });
+        const details = document.createElement('dl');
+        labels.forEach(([field, label]) => {
+          const term = document.createElement('dt'); term.textContent = label;
+          const definition = document.createElement('dd'); definition.textContent = paper[field];
+          details.append(term, definition);
+        });
+        article.append(header, metadata, tagLabel, tags, details);
+        return article;
+      }
+
+      /** 创建包含趋势判断与优先级分布的今日简报。 */
+      function createBriefCard(report) {
+        const counts = { A: 0, B: 0, C: 0 };
+        report.papers.forEach((paper) => {
+          if (Object.prototype.hasOwnProperty.call(counts, paper.priority)) counts[paper.priority] += 1;
+        });
+        const card = document.createElement('section'); card.className = 'brief-card';
+        const title = document.createElement('h2'); title.textContent = '今日简报';
+        const summary = document.createElement('p'); summary.textContent = report.brief.summary;
+        const trend = document.createElement('p');
+        const label = document.createElement('strong'); label.textContent = '研究趋势判断：';
+        trend.append(label, document.createTextNode(report.brief.trendAssessment));
+        const grid = document.createElement('div'); grid.className = 'priority-counts';
+        [['推荐论文', `${report.papers.length} 篇`], ['A 优先级', `${counts.A} 篇`], ['B 优先级', `${counts.B} 篇`], ['C 优先级', `${counts.C} 篇`]].forEach(([itemLabel, value]) => {
+          const item = document.createElement('div'); item.className = 'count-item';
+          const name = document.createElement('span'); name.className = 'count-label'; name.textContent = itemLabel;
+          const number = document.createElement('span'); number.className = 'count-value'; number.textContent = value;
+          item.append(name, number); grid.append(item);
+        });
+        card.append(title, summary, trend, grid);
+        return card;
+      }
+
+      /** 渲染当前选择日期的完整日报。 */
+      function renderReport() {
+        const report = reports.find((item) => item.date === activeDate);
+        if (!report) { showNotice('未找到所选日期的日报。'); return; }
+        content.replaceChildren();
+        notices.forEach((message) => { const notice = document.createElement('p'); notice.className = 'notice'; notice.textContent = message; content.append(notice); });
+        const eyebrow = document.createElement('p'); eyebrow.className = 'eyebrow'; eyebrow.textContent = report.date.replaceAll('-', ' / ');
+        const heading = document.createElement('h1'); heading.textContent = report.title;
+        const generated = document.createElement('p'); generated.className = 'generated'; generated.textContent = `生成时间：${report.generatedAt}`;
+        const briefCard = createBriefCard(report);
+        const topTitle = document.createElement('h2'); topTitle.className = 'section-title'; topTitle.textContent = '今日最值得精读 Top 2';
+        const topPicks = document.createElement('div'); topPicks.className = 'top-picks';
+        const paperById = new Map(report.papers.map((paper) => [paper.id, paper]));
+        report.topPicks.forEach((id, index) => {
+          const paper = paperById.get(id);
+          if (!paper) { notices.push(`Top 2 中的 ${id} 未在 papers 找到。`); return; }
+          const card = document.createElement('article'); card.className = 'top-card';
+          const label = document.createElement('span'); label.textContent = `TOP ${index + 1}`;
+          const title = createTitle(paper); card.append(label, title); topPicks.append(card);
+        });
+        if (!topPicks.childElementCount) { const missing = document.createElement('p'); missing.className = 'notice'; missing.textContent = 'Top 2 暂无法匹配论文数据。'; topPicks.append(missing); }
+        const papersTitle = document.createElement('h2'); papersTitle.className = 'section-title'; papersTitle.textContent = `今日推荐论文（${report.papers.length} 篇）`;
+        const paperList = document.createElement('section'); paperList.className = 'paper-list';
+        report.papers.forEach((paper, index) => paperList.append(createPaperCard(paper, index)));
+        content.append(eyebrow, heading, generated, briefCard, topTitle, topPicks, papersTitle, paperList);
+      }
+
+      /** 初始化已成功加载的月度日报数据。 */
+      function initialize() {
+        const normalized = normalizeReports(window.RESEARCH_REPORTS);
+        reports = normalized.reports; notices = normalized.notices;
+        if (!reports.length) { showNotice(notices[0] || '日报数据为空。请在 reports 文件夹的当月文件中新增一条日报。'); return; }
+        activeDate = reports[0].date;
+        renderSidebar(); renderReport();
+      }
+
+      /** 先加载清单，再按清单顺序加载月度文件。 */
+      async function loadMonthlyReports() {
+        try {
+          await loadLocalScript('reports/manifest.js');
+          if (!Array.isArray(window.RESEARCH_REPORT_MONTHS)) {
+            throw new Error('月份清单格式不正确');
+          }
+          for (const month of window.RESEARCH_REPORT_MONTHS) {
+            if (typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month)) {
+              throw new Error('月份清单包含无效日期');
+            }
+            await loadLocalScript(`reports/${month}.js`);
+          }
+          initialize();
+        } catch (error) {
+          showLoadError(error);
+        }
+      }
+
+      loadMonthlyReports();
+    })();
+  </script>
+</body>
+</html>
