@@ -21,6 +21,8 @@ window.RESEARCH_REPORTS.push({
       "title": "OpenSkillRisk: Benchmarking Agent Safety When Using Real-World Risky Third-Party Skills",
       "url": "https://arxiv.org/abs/2607.20121",
       "authorsAndInstitutions": "Qiyuan Liu、Tingfeng Hui、Kun Zhan、Kaike Zhang、Ning Miao；机构未在 arXiv 摘要页可靠查到，不作推断。",
+      "qualitySignals": "作者与机构信号：未可靠查到，当前仅可靠提取作者列表；版本动态：v1 新发，位于 2026-07-22 UTC 新提交窗口；开源与数据实物信号：未可靠查到官方代码或数据链接。",
+      "openSourceAndData": "未可靠查到",
       "tags": [
         "Agent",
         "Agent Skill",
@@ -42,6 +44,8 @@ window.RESEARCH_REPORTS.push({
       "title": "Don't Trust the Label: License Laundering in AI Supply Chains",
       "url": "https://arxiv.org/abs/2607.20300",
       "authorsAndInstitutions": "James Jewitt、Hao Li、Gopi Krishnan Rajbahadur、Bram Adams、Ahmed E. Hassan；机构未在 arXiv 摘要页可靠查到，不作推断。",
+      "qualitySignals": "作者与机构信号：未可靠查到完整机构，作者列表可靠；版本动态：v1 新发，位于 2026-07-22 UTC 新提交窗口；开源与数据实物信号：未可靠查到官方代码、数据或复现仓库链接。",
+      "openSourceAndData": "未可靠查到",
       "tags": [
         "AI Supply-chain Security",
         "License Compliance",
@@ -63,6 +67,8 @@ window.RESEARCH_REPORTS.push({
       "title": "They'll Verify. They Just Won't Act. How Authority Framing and Laundered Code Turn a Trusted Agentic CI/CD Pipeline Into an Attack Surface",
       "url": "https://arxiv.org/abs/2607.19267",
       "authorsAndInstitutions": "Yohann Sidot；机构未在 arXiv 摘要页可靠查到，不作推断。",
+      "qualitySignals": "作者与机构信号：未可靠查到；版本动态：v1，位于本次 24–36 小时检索窗口内；开源与数据实物信号：未可靠查到官方代码、数据或实验脚本链接。",
+      "openSourceAndData": "未可靠查到",
       "tags": [
         "Coding Agent",
         "Agentic CI/CD",
@@ -84,6 +90,8 @@ window.RESEARCH_REPORTS.push({
       "title": "Know Your Agent: Reconnaissance-Driven Pentesting of AI Agents",
       "url": "https://arxiv.org/abs/2607.19837",
       "authorsAndInstitutions": "Or Zion Eliav、Eyal Lenga、Shir Bernstien、Yisroel Mirsky；机构未在 arXiv 摘要页可靠查到，不作推断。",
+      "qualitySignals": "作者与机构信号：未可靠查到完整机构，作者列表可靠；版本动态：v1 新发，位于 2026-07-22 UTC 新提交窗口；开源与数据实物信号：论文称计划释放框架、benchmark 和 baseline，但当前未可靠查到官方链接。",
+      "openSourceAndData": "论文称计划释放框架、benchmark 和 baseline；官方链接未可靠查到。",
       "tags": [
         "Agent Security",
         "Pentesting",
@@ -105,6 +113,8 @@ window.RESEARCH_REPORTS.push({
       "title": "ChannelGuard: Safe Models Do Not Compose into Safe Multi-Agent Systems",
       "url": "https://arxiv.org/abs/2607.19430",
       "authorsAndInstitutions": "Elias Hossain、Md Mehedi Hasan Nipu、Fatema Tuj Johora Faria、Tasfia Nuzhat Ornee、Maleeha Sheikh；机构未在 arXiv 摘要页可靠查到，不作推断。",
+      "qualitySignals": "作者与机构信号：未可靠查到完整机构，作者列表可靠；版本动态：v1，位于本次 24–36 小时检索窗口内；开源与数据实物信号：未可靠查到官方代码、数据或 benchmark 链接。",
+      "openSourceAndData": "未可靠查到",
       "tags": [
         "Multi-agent",
         "Agent Security",
@@ -126,6 +136,8 @@ window.RESEARCH_REPORTS.push({
       "title": "JANUS: Foreseeing Latent Risk for Long-Horizon Agent Safety",
       "url": "https://arxiv.org/abs/2607.19913",
       "authorsAndInstitutions": "Yuan Xiong、Linji Hao、Shizhu He、Yequan Wang、Lijun Li；机构未在 arXiv 摘要页可靠查到，不作推断。",
+      "qualitySignals": "作者与机构信号：未可靠查到完整机构，作者列表可靠；版本动态：v1 新发，位于 2026-07-22 UTC 新提交窗口；开源与数据实物信号：未可靠查到官方代码、数据或模型链接。",
+      "openSourceAndData": "未可靠查到",
       "tags": [
         "Agent Safety",
         "Long-Horizon Agent",
@@ -147,6 +159,8 @@ window.RESEARCH_REPORTS.push({
       "title": "PRO-LONG: Programmatic Memory Enables Long-Horizon Reasoning",
       "url": "https://arxiv.org/abs/2607.20064",
       "authorsAndInstitutions": "Alexis Fox、Junlin Wang、Paul Rosu、Bhuwan Dhingra；机构未在 arXiv 摘要页可靠查到，不作推断。",
+      "qualitySignals": "作者与机构信号：未可靠查到完整机构，作者列表可靠；版本动态：v1 新发，位于 2026-07-22 UTC 新提交窗口；开源与数据实物信号：论文摘要提到代码和日志可用性，但当前未可靠查到官方链接。",
+      "openSourceAndData": "论文摘要提到代码和日志可用性；官方链接未可靠查到。",
       "tags": [
         "LLM Agent",
         "Memory",
