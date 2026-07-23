@@ -54,6 +54,8 @@
     dt, dd { margin:0; padding:12px 0; border-bottom:1px solid #e8e4db; }
     dt { color:var(--accent); font-size:13px; font-weight:700; }
     dd { padding-left:18px; }
+    .resource-list { margin:0; padding-left:18px; }
+    .resource-list a { color:var(--ink); text-decoration-color:#9da795; text-underline-offset:3px; }
     .empty { margin-top:54px; padding:36px; border:1px dashed #b9b9ae; border-radius:12px; color:var(--muted); text-align:center; background:rgba(255,253,248,.55); }
     @media (max-width:760px) {
       .app { display:block; }
@@ -92,6 +94,7 @@
       const content = document.getElementById('content');
       const dateList = document.getElementById('date-list');
       const labels = [
+        ['qualitySignals', '质量信号'], ['openSourceAndData', '开源与数据'],
         ['summary', '一句话总结'], ['importance', '研究背景与动机'],
         ['methodHighlights', '方法亮点'], ['keyFindings', '关键实验结论'],
         ['limitations', '局限性'], ['inspiration', '启发'],
@@ -111,6 +114,19 @@
         return typeof value === 'string' && value.trim() ? value.trim() : '';
       }
 
+      /** 标准化开源链接字段，兼容字符串和链接数组。 */
+      function normalizeOpenSource(value) {
+        if (typeof value === 'string' && value.trim()) return value.trim();
+        if (!Array.isArray(value)) return '';
+        return value
+          .filter((item) => item && typeof item === 'object' && typeof item.url === 'string' && item.url.trim())
+          .map((item) => ({
+            label: optionalText(item.label) || '链接',
+            url: item.url.trim(),
+            note: optionalText(item.note)
+          }));
+      }
+
       /** 将可能不完整的论文对象转为稳定的展示结构。 */
       function normalizePaper(paper, index) {
         const source = paper && typeof paper === 'object' ? paper : {};
@@ -119,6 +135,8 @@
           id: textOf(source.id) === '待补充' ? `paper-${index + 1}` : textOf(source.id),
           title: textOf(source.title), url: textOf(source.url),
           authorsAndInstitutions: textOf(source.authorsAndInstitutions), tags,
+          qualitySignals: optionalText(source.qualitySignals),
+          openSourceAndData: normalizeOpenSource(source.openSourceAndData),
           summary: textOf(source.summary), importance: textOf(source.importance),
           methodHighlights: textOf(source.methodHighlights), keyFindings: optionalText(source.keyFindings),
           limitations: textOf(source.limitations),
@@ -232,9 +250,24 @@
         paper.tags.forEach((tag) => { const item = document.createElement('span'); item.className = 'tag'; item.textContent = tag; tags.append(item); });
         const details = document.createElement('dl');
         labels.forEach(([field, label]) => {
-          if (field === 'keyFindings' && !paper[field]) return;
+          if ((field === 'keyFindings' || field === 'qualitySignals' || field === 'openSourceAndData') && !paper[field]) return;
           const term = document.createElement('dt'); term.textContent = label;
-          const definition = document.createElement('dd'); definition.textContent = paper[field];
+          const definition = document.createElement('dd');
+          if (field === 'openSourceAndData' && Array.isArray(paper[field])) {
+            const list = document.createElement('ul');
+            list.className = 'resource-list';
+            paper[field].forEach((resource) => {
+              const item = document.createElement('li');
+              const link = document.createElement('a');
+              link.href = resource.url; link.target = '_blank'; link.rel = 'noreferrer'; link.textContent = resource.label;
+              item.append(link);
+              if (resource.note) item.append(document.createTextNode(`：${resource.note}`));
+              list.append(item);
+            });
+            definition.append(list);
+          } else {
+            definition.textContent = paper[field];
+          }
           details.append(term, definition);
         });
         article.append(header, metadata, tagLabel, tags, details);
