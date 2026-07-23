@@ -39,6 +39,7 @@
     .top-card span { color:var(--accent); font-size:11px; font-weight:700; letter-spacing:.12em; }
     .top-card a, .paper-title a { color:var(--ink); text-decoration-color:#9da795; text-underline-offset:3px; }
     .top-card h3 { margin:7px 0 0; font-size:20px; }
+    .top-card p { margin:10px 0 0; color:var(--muted); font-size:14px; }
     .paper-list { display:grid; gap:22px; }
     .paper { padding:25px; }
     .paper-header { display:flex; align-items:start; justify-content:space-between; gap:16px; }
@@ -91,9 +92,10 @@
       const content = document.getElementById('content');
       const dateList = document.getElementById('date-list');
       const labels = [
-        ['summary', '一句话总结'], ['importance', '问题'],
-        ['methodHighlights', '方法亮点'], ['limitations', '局限性'],
-        ['inspiration', '启发'], ['valueJudgment', '内容价值判断']
+        ['summary', '一句话总结'], ['importance', '研究背景与动机'],
+        ['methodHighlights', '方法亮点'], ['keyFindings', '关键实验结论'],
+        ['limitations', '局限性'], ['inspiration', '启发'],
+        ['valueJudgment', '内容价值判断']
       ];
       let reports = [];
       let activeDate = '';
@@ -102,6 +104,11 @@
       /** 将任意字段安全转换为页面可读文字。 */
       function textOf(value) {
         return typeof value === 'string' && value.trim() ? value.trim() : '待补充';
+      }
+
+      /** 将可选字段安全转换为文字；空值不展示。 */
+      function optionalText(value) {
+        return typeof value === 'string' && value.trim() ? value.trim() : '';
       }
 
       /** 将可能不完整的论文对象转为稳定的展示结构。 */
@@ -113,7 +120,8 @@
           title: textOf(source.title), url: textOf(source.url),
           authorsAndInstitutions: textOf(source.authorsAndInstitutions), tags,
           summary: textOf(source.summary), importance: textOf(source.importance),
-          methodHighlights: textOf(source.methodHighlights), limitations: textOf(source.limitations),
+          methodHighlights: textOf(source.methodHighlights), keyFindings: optionalText(source.keyFindings),
+          limitations: textOf(source.limitations),
           inspiration: textOf(source.inspiration), valueJudgment: textOf(source.valueJudgment),
           priority: textOf(source.priority)
         };
@@ -133,10 +141,14 @@
           if (!Array.isArray(report.topPicks)) { warnings.push(`日期 ${report.date} 的 topPicks 必须是数组。`); return; }
           seenDates.add(report.date);
           const brief = report.brief && typeof report.brief === 'object' ? report.brief : {};
+          const topPickRationales = report.topPickRationales && typeof report.topPickRationales === 'object'
+            ? report.topPickRationales
+            : {};
           validReports.push({
             date: report.date, title: textOf(report.title), generatedAt: textOf(report.generatedAt),
             brief: { summary: textOf(brief.summary), trendAssessment: textOf(brief.trendAssessment) },
             topPicks: report.topPicks.filter((id) => typeof id === 'string'),
+            topPickRationales,
             papers: report.papers.map(normalizePaper)
           });
         });
@@ -220,6 +232,7 @@
         paper.tags.forEach((tag) => { const item = document.createElement('span'); item.className = 'tag'; item.textContent = tag; tags.append(item); });
         const details = document.createElement('dl');
         labels.forEach(([field, label]) => {
+          if (field === 'keyFindings' && !paper[field]) return;
           const term = document.createElement('dt'); term.textContent = label;
           const definition = document.createElement('dd'); definition.textContent = paper[field];
           details.append(term, definition);
@@ -269,7 +282,10 @@
           if (!paper) { notices.push(`Top 2 中的 ${id} 未在 papers 找到。`); return; }
           const card = document.createElement('article'); card.className = 'top-card';
           const label = document.createElement('span'); label.textContent = `TOP ${index + 1}`;
-          const title = createTitle(paper); card.append(label, title); topPicks.append(card);
+          const title = createTitle(paper);
+          const rationale = document.createElement('p');
+          rationale.textContent = report.topPickRationales[id] || `${paper.summary} ${paper.importance} ${paper.valueJudgment}`;
+          card.append(label, title, rationale); topPicks.append(card);
         });
         if (!topPicks.childElementCount) { const missing = document.createElement('p'); missing.className = 'notice'; missing.textContent = 'Top 2 暂无法匹配论文数据。'; topPicks.append(missing); }
         const papersTitle = document.createElement('h2'); papersTitle.className = 'section-title'; papersTitle.textContent = `今日推荐论文（${report.papers.length} 篇）`;
