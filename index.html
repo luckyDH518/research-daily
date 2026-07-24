@@ -20,6 +20,11 @@
     .date-button[aria-current="date"], .marked-button[aria-current="page"] { color:var(--ink); border-color:#b5beaa; background:var(--soft); font-weight:700; }
     .marked-button { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
     .marked-count { min-width:25px; padding:1px 7px; border-radius:999px; color:#66502f; background:#f5ead6; text-align:center; font-size:12px; font-weight:700; }
+    .sync-panel { margin:10px 0 0; padding:11px; border:1px solid #d8d2c5; border-radius:8px; background:rgba(255,253,248,.55); }
+    .sync-status { margin:0 0 8px; color:#77796f; font-size:11px; line-height:1.55; }
+    .sync-button { width:100%; padding:7px 9px; border:1px solid #c8c2b5; border-radius:6px; color:#5f6259; background:#f7f4ec; cursor:pointer; font-size:11px; }
+    .sync-button:hover, .sync-button:focus-visible { outline:none; border-color:#aeb5a4; background:#fffdf8; }
+    .sync-button:disabled { opacity:.5; cursor:not-allowed; }
     .sidebar-note { margin:18px 10px 0; color:#8a8b83; font-size:11px; line-height:1.6; }
     main { width:min(920px, 100%); margin:0 auto; padding:42px 46px 70px; }
     .notice { margin:0 0 20px; padding:12px 15px; border-left:4px solid var(--mark); border-radius:4px; color:#5c4729; background:#fff8e9; font-size:14px; }
@@ -71,10 +76,11 @@
     .resource-list a { color:var(--ink); text-decoration-color:#9da795; text-underline-offset:3px; }
     .inline-editor-wrap { display:grid; gap:8px; width:100%; }
     .inline-editor { width:100%; min-height:110px; padding:10px 11px; resize:vertical; border:1px solid #abb59e; border-radius:7px; color:var(--ink); background:#fff; line-height:1.65; }
-    .editor-actions { display:flex; flex-wrap:wrap; gap:7px; }
+    .editor-actions { display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
     .editor-button { padding:5px 10px; border:1px solid #c9c6bb; border-radius:6px; background:#f8f6ef; color:var(--ink); cursor:pointer; font-size:12px; }
     .editor-button.primary { border-color:#aab59c; background:#eaf0e2; font-weight:700; }
     .local-edit-note { color:#9b7a42; font-size:11px; font-weight:700; }
+    .github-edit-note { color:#667555; font-size:11px; font-weight:700; }
     .marked-origin { margin:0 0 14px; color:var(--muted); font-size:13px; }
     .empty { margin-top:54px; padding:36px; border:1px dashed #b9b9ae; border-radius:12px; color:var(--muted); text-align:center; background:rgba(255,253,248,.55); }
     @media (max-width:760px) {
@@ -85,6 +91,7 @@
       .date-button { flex:0 0 auto; width:auto; white-space:nowrap; }
       .marked-button { max-width:220px; }
       .sidebar-section-label, .sidebar-note { display:none; }
+      .sync-panel { max-width:360px; }
       main { padding:29px 20px 48px; }
       .top-picks { grid-template-columns:1fr; }
       .paper { padding:19px; }
@@ -103,9 +110,13 @@
     <aside class="sidebar">
       <p class="brand">科研日报<small>LLM / AGENT</small></p>
       <button id="marked-button" class="marked-button" type="button"><span>★ 已标记论文</span><span id="marked-count" class="marked-count">0</span></button>
+      <div class="sync-panel">
+        <p id="sync-status" class="sync-status">正在读取用户数据…</p>
+        <button id="copy-sync-button" class="sync-button" type="button" disabled>复制待同步数据</button>
+      </div>
       <p class="sidebar-section-label">日报日期</p>
       <nav id="date-list" class="date-list" aria-label="日报日期"></nav>
-      <p class="sidebar-note">标记和双击编辑内容保存在当前浏览器本地，不修改 GitHub 原始日报。</p>
+      <p class="sidebar-note">GitHub 中的 user-data 是跨设备主副本；本机新标记和修改先作为本地覆盖保存，再通过“待同步数据”写回 GitHub。</p>
     </aside>
     <main id="content" aria-live="polite"></main>
   </div>
@@ -114,6 +125,8 @@
     window.RESEARCH_REPORTS = [];
     window.RESEARCH_REPORT_MONTHS = [];
     window.RESEARCH_REPORT_SOURCES = [];
+    window.RESEARCH_USER_BOOKMARKS = {};
+    window.RESEARCH_USER_ANNOTATIONS = {};
   </script>
   <script>
     (() => {
@@ -121,21 +134,26 @@
       const dateList = document.getElementById('date-list');
       const markedButton = document.getElementById('marked-button');
       const markedCount = document.getElementById('marked-count');
-      const MARKS_KEY = 'researchDailyMarkedPapersV1';
-      const EDITS_KEY = 'researchDailyPaperEditsV1';
+      const syncStatus = document.getElementById('sync-status');
+      const copySyncButton = document.getElementById('copy-sync-button');
+      const MARKS_KEY = 'researchDailyMarkedPapersV2';
+      const EDITS_KEY = 'researchDailyPaperEditsV2';
       const labels = [
         ['qualitySignals', '质量信号'], ['openSourceAndData', '开源与数据'],
         ['summary', '一句话总结'], ['importance', '研究背景与动机'],
         ['methodHighlights', '方法亮点'], ['keyFindings', '关键实验结论'],
-        ['limitations', '局限性'], ['inspiration', '启发'],
-        ['valueJudgment', '内容价值判断']
+        ['limitations', '局限性'], ['inspiration', '启发'], ['valueJudgment', '内容价值判断']
       ];
       let reports = [];
       let activeDate = '';
       let activeView = 'report';
       let notices = [];
-      let marked = loadLocal(MARKS_KEY, {});
-      let edits = loadLocal(EDITS_KEY, {});
+      let canonicalMarked = {};
+      let canonicalEdits = {};
+      let localMarked = loadLocal(MARKS_KEY, {});
+      let localEdits = loadLocal(EDITS_KEY, {});
+      let marked = {};
+      let edits = {};
 
       function loadLocal(key, fallback) {
         try {
@@ -149,19 +167,70 @@
         catch (_) { return false; }
       }
 
-      function textOf(value) {
-        return typeof value === 'string' && value.trim() ? value.trim() : '待补充';
+      function textOf(value) { return typeof value === 'string' && value.trim() ? value.trim() : '待补充'; }
+      function optionalText(value) { return typeof value === 'string' && value.trim() ? value.trim() : ''; }
+
+      function mergeOverlay(canonical, local) {
+        const result = { ...canonical };
+        Object.entries(local || {}).forEach(([key, value]) => {
+          if (value === false || value === null) delete result[key]; else result[key] = value;
+        });
+        return result;
       }
 
-      function optionalText(value) {
-        return typeof value === 'string' && value.trim() ? value.trim() : '';
+      function refreshMergedUserData() {
+        marked = mergeOverlay(canonicalMarked, localMarked);
+        edits = mergeOverlay(canonicalEdits, localEdits);
+        updateSyncStatus();
+      }
+
+      function stable(value) { return JSON.stringify(value ?? null); }
+
+      function pendingCount() {
+        let count = 0;
+        const desiredMarks = marked;
+        new Set([...Object.keys(canonicalMarked), ...Object.keys(desiredMarks)]).forEach((key) => {
+          if (stable(canonicalMarked[key]) !== stable(desiredMarks[key])) count += 1;
+        });
+        const desiredEdits = edits;
+        new Set([...Object.keys(canonicalEdits), ...Object.keys(desiredEdits)]).forEach((key) => {
+          if (stable(canonicalEdits[key]) !== stable(desiredEdits[key])) count += 1;
+        });
+        return count;
+      }
+
+      function updateSyncStatus() {
+        const pending = pendingCount();
+        syncStatus.textContent = `GitHub 已同步：${Object.keys(canonicalMarked).length} 个标记、${Object.keys(canonicalEdits).length} 条修改；本地待同步 ${pending} 项。`;
+        copySyncButton.disabled = pending === 0;
+      }
+
+      function buildSyncPayload() {
+        return {
+          generatedAt: new Date().toISOString(),
+          bookmarks: marked,
+          annotations: edits
+        };
+      }
+
+      async function copySyncPayload() {
+        const text = JSON.stringify(buildSyncPayload(), null, 2);
+        try {
+          await navigator.clipboard.writeText(text);
+          copySyncButton.textContent = '已复制，可交给 ChatGPT 同步';
+          setTimeout(() => { copySyncButton.textContent = '复制待同步数据'; }, 2600);
+        } catch (_) {
+          const area = document.createElement('textarea'); area.value = text; area.style.position = 'fixed'; area.style.opacity = '0';
+          document.body.append(area); area.select(); document.execCommand('copy'); area.remove();
+          copySyncButton.textContent = '已复制，可交给 ChatGPT 同步';
+          setTimeout(() => { copySyncButton.textContent = '复制待同步数据'; }, 2600);
+        }
       }
 
       function normalizeOpenSource(value) {
         if (typeof value === 'string' && value.trim()) return value.trim();
         if (!Array.isArray(value)) return '';
-        return value
-          .filter((item) => item && typeof item === 'object' && typeof item.url === 'string' && item.url.trim())
+        return value.filter((item) => item && typeof item === 'object' && typeof item.url === 'string' && item.url.trim())
           .map((item) => ({ label: optionalText(item.label) || '链接', url: item.url.trim(), note: optionalText(item.note) }));
       }
 
@@ -180,9 +249,7 @@
 
       function normalizeReports(raw) {
         if (!Array.isArray(raw)) return { reports: [], notices: ['数据格式不正确：RESEARCH_REPORTS 必须是日报数组。'] };
-        const seenDates = new Set();
-        const validReports = [];
-        const warnings = [];
+        const seenDates = new Set(); const validReports = []; const warnings = [];
         raw.forEach((report, reportIndex) => {
           if (!report || typeof report !== 'object') { warnings.push(`第 ${reportIndex + 1} 条日报格式不正确。`); return; }
           if (typeof report.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(report.date)) { warnings.push(`第 ${reportIndex + 1} 条日报缺少有效 date。`); return; }
@@ -205,6 +272,8 @@
       function editKey(date, paperId, field) { return `${date}::${paperId}::${field}`; }
       function isMarked(date, paperId) { return Boolean(marked[paperKey(date, paperId)]); }
       function hasEdit(date, paperId, field) { return Object.prototype.hasOwnProperty.call(edits, editKey(date, paperId, field)); }
+      function hasCanonicalEdit(date, paperId, field) { return Object.prototype.hasOwnProperty.call(canonicalEdits, editKey(date, paperId, field)); }
+      function hasLocalEdit(date, paperId, field) { return Object.prototype.hasOwnProperty.call(localEdits, editKey(date, paperId, field)) && localEdits[editKey(date, paperId, field)] !== null; }
       function effectiveField(date, paper, field) { return hasEdit(date, paper.id, field) ? edits[editKey(date, paper.id, field)] : paper[field]; }
 
       function fieldAsText(value) {
@@ -214,9 +283,8 @@
 
       function toggleMark(date, paperId) {
         const key = paperKey(date, paperId);
-        if (marked[key]) delete marked[key]; else marked[key] = { date, paperId, markedAt: new Date().toISOString() };
-        saveLocal(MARKS_KEY, marked);
-        renderSidebar();
+        localMarked[key] = isMarked(date, paperId) ? false : { date, paperId, markedAt: new Date().toISOString() };
+        saveLocal(MARKS_KEY, localMarked); refreshMergedUserData(); renderSidebar();
         activeView === 'marked' ? renderMarkedList() : renderReport();
       }
 
@@ -226,14 +294,14 @@
       }
 
       function showNotice(message) {
-        content.replaceChildren();
-        const box = document.createElement('section'); box.className = 'empty'; box.textContent = message; content.append(box);
+        content.replaceChildren(); const box = document.createElement('section'); box.className = 'empty'; box.textContent = message; content.append(box);
       }
 
-      function loadLocalScript(source) {
+      function loadLocalScript(source, optional = false) {
         return new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = source; script.onload = () => resolve(); script.onerror = () => reject(new Error(`无法读取 ${source}`));
+          const script = document.createElement('script'); script.src = source;
+          script.onload = () => resolve(true);
+          script.onerror = () => optional ? resolve(false) : reject(new Error(`无法读取 ${source}`));
           document.head.append(script);
         });
       }
@@ -244,9 +312,7 @@
       }
 
       function renderSidebar() {
-        dateList.replaceChildren();
-        markedButton.setAttribute('aria-current', activeView === 'marked' ? 'page' : 'false');
-        updateMarkedCount();
+        dateList.replaceChildren(); markedButton.setAttribute('aria-current', activeView === 'marked' ? 'page' : 'false'); updateMarkedCount(); updateSyncStatus();
         reports.forEach((report) => {
           const button = document.createElement('button'); button.className = 'date-button'; button.type = 'button'; button.textContent = report.date;
           if (activeView === 'report' && report.date === activeDate) button.setAttribute('aria-current', 'date');
@@ -265,39 +331,41 @@
 
       function startInlineEdit(container, date, paper, field) {
         if (container.querySelector('.inline-editor-wrap')) return;
-        const originalValue = fieldAsText(paper[field]);
-        const currentValue = fieldAsText(effectiveField(date, paper, field));
-        container.replaceChildren();
+        const currentValue = fieldAsText(effectiveField(date, paper, field)); container.replaceChildren();
         const wrap = document.createElement('div'); wrap.className = 'inline-editor-wrap';
         const textarea = document.createElement('textarea'); textarea.className = 'inline-editor'; textarea.value = currentValue; textarea.setAttribute('aria-label', `编辑${field}`);
         const actions = document.createElement('div'); actions.className = 'editor-actions';
         const save = document.createElement('button'); save.type = 'button'; save.className = 'editor-button primary'; save.textContent = '保存本地修改';
         const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'editor-button'; cancel.textContent = '取消';
-        const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'editor-button'; reset.textContent = '恢复原文';
+        const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'editor-button'; reset.textContent = '恢复日报原文';
         const commit = () => {
-          edits[editKey(date, paper.id, field)] = textarea.value;
-          saveLocal(EDITS_KEY, edits);
-          activeView === 'marked' ? renderMarkedList() : renderReport();
+          localEdits[editKey(date, paper.id, field)] = textarea.value; saveLocal(EDITS_KEY, localEdits); refreshMergedUserData();
+          activeView === 'marked' ? renderMarkedList() : renderReport(); renderSidebar();
         };
         save.addEventListener('click', commit);
         cancel.addEventListener('click', () => activeView === 'marked' ? renderMarkedList() : renderReport());
         reset.addEventListener('click', () => {
-          delete edits[editKey(date, paper.id, field)]; saveLocal(EDITS_KEY, edits);
-          activeView === 'marked' ? renderMarkedList() : renderReport();
+          localEdits[editKey(date, paper.id, field)] = null; saveLocal(EDITS_KEY, localEdits); refreshMergedUserData();
+          activeView === 'marked' ? renderMarkedList() : renderReport(); renderSidebar();
         });
         textarea.addEventListener('keydown', (event) => {
           if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); commit(); }
           if (event.key === 'Escape') { event.preventDefault(); activeView === 'marked' ? renderMarkedList() : renderReport(); }
         });
-        if (currentValue !== originalValue) {
-          const edited = document.createElement('span'); edited.className = 'local-edit-note'; edited.textContent = '当前为本地修改版'; actions.append(edited);
-        }
         actions.append(save, cancel, reset); wrap.append(textarea, actions); container.append(wrap); textarea.focus();
       }
 
       function makeEditable(element, date, paper, field) {
-        element.classList.add('editable'); element.title = '双击修改；修改仅保存在当前浏览器';
+        element.classList.add('editable'); element.title = '双击修改；修改先保存在本机，可再同步到 GitHub';
         element.addEventListener('dblclick', (event) => { event.preventDefault(); startInlineEdit(element, date, paper, field); });
+      }
+
+      function appendEditState(container, date, paper, field) {
+        if (hasLocalEdit(date, paper.id, field)) {
+          const edited = document.createElement('span'); edited.className = 'local-edit-note'; edited.textContent = ' · 本地待同步修改'; container.append(edited);
+        } else if (hasCanonicalEdit(date, paper.id, field)) {
+          const synced = document.createElement('span'); synced.className = 'github-edit-note'; synced.textContent = ' · GitHub 已同步修改'; container.append(synced);
+        }
       }
 
       function renderFieldValue(container, date, paper, field) {
@@ -305,24 +373,17 @@
         if (field === 'openSourceAndData' && Array.isArray(value)) {
           const list = document.createElement('ul'); list.className = 'resource-list';
           value.forEach((resource) => {
-            const item = document.createElement('li'); const link = document.createElement('a');
-            link.href = resource.url; link.target = '_blank'; link.rel = 'noreferrer'; link.textContent = resource.label;
+            const item = document.createElement('li'); const link = document.createElement('a'); link.href = resource.url; link.target = '_blank'; link.rel = 'noreferrer'; link.textContent = resource.label;
             item.append(link); if (resource.note) item.append(document.createTextNode(`：${resource.note}`)); list.append(item);
-          });
-          container.append(list);
+          }); container.append(list);
         } else container.textContent = typeof value === 'string' && value.trim() ? value : '—';
-        if (hasEdit(date, paper.id, field)) {
-          const edited = document.createElement('span'); edited.className = 'local-edit-note'; edited.textContent = ' · 已本地修改'; container.append(edited);
-        }
+        appendEditState(container, date, paper, field);
       }
 
       function createPaperCard(paper, index, date, options = {}) {
         const article = document.createElement('article'); article.className = `paper${isMarked(date, paper.id) ? ' is-marked' : ''}`;
-        if (options.showOrigin) {
-          const origin = document.createElement('p'); origin.className = 'marked-origin'; origin.textContent = `来自日报：${date}`; article.append(origin);
-        }
-        const header = document.createElement('div'); header.className = 'paper-header';
-        const titleBlock = document.createElement('div');
+        if (options.showOrigin) { const origin = document.createElement('p'); origin.className = 'marked-origin'; origin.textContent = `来自日报：${date}`; article.append(origin); }
+        const header = document.createElement('div'); header.className = 'paper-header'; const titleBlock = document.createElement('div');
         const number = document.createElement('p'); number.className = 'paper-index'; number.textContent = options.indexLabel || `推荐论文 ${String(index + 1).padStart(2, '0')}`;
         titleBlock.append(number, createTitle(paper));
         const actions = document.createElement('div'); actions.className = 'paper-actions';
@@ -330,86 +391,62 @@
         const mark = document.createElement('button'); mark.className = 'mark-button'; mark.type = 'button'; mark.setAttribute('aria-pressed', String(isMarked(date, paper.id)));
         mark.textContent = isMarked(date, paper.id) ? '★ 已标记' : '☆ 标记'; mark.addEventListener('click', () => toggleMark(date, paper.id));
         actions.append(priority, mark); header.append(titleBlock, actions);
-
-        const metadata = document.createElement('p'); metadata.className = 'metadata';
-        metadata.textContent = `作者与机构：${fieldAsText(effectiveField(date, paper, 'authorsAndInstitutions')) || '—'}`;
-        if (hasEdit(date, paper.id, 'authorsAndInstitutions')) { const edited = document.createElement('span'); edited.className = 'local-edit-note'; edited.textContent = ' · 已本地修改'; metadata.append(edited); }
-        makeEditable(metadata, date, paper, 'authorsAndInstitutions');
-
+        const metadata = document.createElement('p'); metadata.className = 'metadata'; metadata.textContent = `作者与机构：${fieldAsText(effectiveField(date, paper, 'authorsAndInstitutions')) || '—'}`;
+        appendEditState(metadata, date, paper, 'authorsAndInstitutions'); makeEditable(metadata, date, paper, 'authorsAndInstitutions');
         const tagLabel = document.createElement('p'); tagLabel.className = 'field-label'; tagLabel.textContent = '所属方向标签';
-        const tags = document.createElement('div'); tags.className = 'tags';
-        paper.tags.forEach((tag) => { const item = document.createElement('span'); item.className = 'tag'; item.textContent = tag; tags.append(item); });
+        const tags = document.createElement('div'); tags.className = 'tags'; paper.tags.forEach((tag) => { const item = document.createElement('span'); item.className = 'tag'; item.textContent = tag; tags.append(item); });
         const details = document.createElement('dl');
         labels.forEach(([field, label]) => {
           const value = effectiveField(date, paper, field);
           if ((field === 'keyFindings' || field === 'qualitySignals' || field === 'openSourceAndData') && !value && !hasEdit(date, paper.id, field)) return;
-          const term = document.createElement('dt'); term.textContent = label;
-          const definition = document.createElement('dd'); renderFieldValue(definition, date, paper, field); makeEditable(definition, date, paper, field);
-          details.append(term, definition);
+          const term = document.createElement('dt'); term.textContent = label; const definition = document.createElement('dd');
+          renderFieldValue(definition, date, paper, field); makeEditable(definition, date, paper, field); details.append(term, definition);
         });
-        article.append(header, metadata, tagLabel, tags, details);
-        return article;
+        article.append(header, metadata, tagLabel, tags, details); return article;
       }
 
       function createBriefCard(report) {
-        const counts = { A: 0, B: 0, C: 0 };
-        report.papers.forEach((paper) => { if (Object.prototype.hasOwnProperty.call(counts, paper.priority)) counts[paper.priority] += 1; });
-        const card = document.createElement('section'); card.className = 'brief-card';
-        const title = document.createElement('h2'); title.textContent = '今日简报';
-        const summary = document.createElement('p'); summary.textContent = report.brief.summary;
-        const trend = document.createElement('p'); const label = document.createElement('strong'); label.textContent = '研究趋势判断：'; trend.append(label, document.createTextNode(report.brief.trendAssessment));
+        const counts = { A: 0, B: 0, C: 0 }; report.papers.forEach((paper) => { if (Object.prototype.hasOwnProperty.call(counts, paper.priority)) counts[paper.priority] += 1; });
+        const card = document.createElement('section'); card.className = 'brief-card'; const title = document.createElement('h2'); title.textContent = '今日简报';
+        const summary = document.createElement('p'); summary.textContent = report.brief.summary; const trend = document.createElement('p'); const label = document.createElement('strong'); label.textContent = '研究趋势判断：'; trend.append(label, document.createTextNode(report.brief.trendAssessment));
         const grid = document.createElement('div'); grid.className = 'priority-counts';
         [['推荐论文', `${report.papers.length} 篇`], ['A 优先级', `${counts.A} 篇`], ['B 优先级', `${counts.B} 篇`], ['C 优先级', `${counts.C} 篇`]].forEach(([itemLabel, value]) => {
           const item = document.createElement('div'); item.className = 'count-item'; const name = document.createElement('span'); name.className = 'count-label'; name.textContent = itemLabel;
           const number = document.createElement('span'); number.className = 'count-value'; number.textContent = value; item.append(name, number); grid.append(item);
-        });
-        card.append(title, summary, trend, grid); return card;
+        }); card.append(title, summary, trend, grid); return card;
       }
 
       function renderReport() {
-        const report = reports.find((item) => item.date === activeDate);
-        if (!report) { showNotice('未找到所选日期的日报。'); return; }
-        content.replaceChildren();
-        notices.forEach((message) => { const notice = document.createElement('p'); notice.className = 'notice'; notice.textContent = message; content.append(notice); });
+        const report = reports.find((item) => item.date === activeDate); if (!report) { showNotice('未找到所选日期的日报。'); return; }
+        content.replaceChildren(); notices.forEach((message) => { const notice = document.createElement('p'); notice.className = 'notice'; notice.textContent = message; content.append(notice); });
         const eyebrow = document.createElement('p'); eyebrow.className = 'eyebrow'; eyebrow.textContent = report.date.replaceAll('-', ' / ');
-        const heading = document.createElement('h1'); heading.textContent = report.title;
-        const generated = document.createElement('p'); generated.className = 'generated'; generated.textContent = `生成时间：${report.generatedAt}`;
-        const briefCard = createBriefCard(report);
-        const topTitle = document.createElement('h2'); topTitle.className = 'section-title'; topTitle.textContent = '今日最值得精读 Top 2';
-        const topPicks = document.createElement('div'); topPicks.className = 'top-picks';
-        const paperById = new Map(report.papers.map((paper) => [paper.id, paper]));
+        const heading = document.createElement('h1'); heading.textContent = report.title; const generated = document.createElement('p'); generated.className = 'generated'; generated.textContent = `生成时间：${report.generatedAt}`;
+        const briefCard = createBriefCard(report); const topTitle = document.createElement('h2'); topTitle.className = 'section-title'; topTitle.textContent = '今日最值得精读 Top 2';
+        const topPicks = document.createElement('div'); topPicks.className = 'top-picks'; const paperById = new Map(report.papers.map((paper) => [paper.id, paper]));
         report.topPicks.forEach((id, index) => {
-          const paper = paperById.get(id); if (!paper) return;
-          const card = document.createElement('article'); card.className = 'top-card'; const label = document.createElement('span'); label.textContent = `TOP ${index + 1}`;
-          const title = createTitle(paper); const rationale = document.createElement('p'); rationale.textContent = report.topPickRationales[id] || `${paper.summary} ${paper.importance} ${paper.valueJudgment}`;
-          card.append(label, title, rationale); topPicks.append(card);
+          const paper = paperById.get(id); if (!paper) return; const card = document.createElement('article'); card.className = 'top-card'; const label = document.createElement('span'); label.textContent = `TOP ${index + 1}`;
+          const title = createTitle(paper); const rationale = document.createElement('p'); rationale.textContent = report.topPickRationales[id] || `${paper.summary} ${paper.importance} ${paper.valueJudgment}`; card.append(label, title, rationale); topPicks.append(card);
         });
         if (!topPicks.childElementCount) { const missing = document.createElement('p'); missing.className = 'notice'; missing.textContent = 'Top 2 暂无法匹配论文数据。'; topPicks.append(missing); }
         const papersTitle = document.createElement('h2'); papersTitle.className = 'section-title'; papersTitle.textContent = `今日推荐论文（${report.papers.length} 篇）`;
-        const paperList = document.createElement('section'); paperList.className = 'paper-list';
-        report.papers.forEach((paper, index) => paperList.append(createPaperCard(paper, index, report.date)));
+        const paperList = document.createElement('section'); paperList.className = 'paper-list'; report.papers.forEach((paper, index) => paperList.append(createPaperCard(paper, index, report.date)));
         content.append(eyebrow, heading, generated, briefCard, topTitle, topPicks, papersTitle, paperList);
       }
 
       function renderMarkedList() {
-        content.replaceChildren();
-        const eyebrow = document.createElement('p'); eyebrow.className = 'eyebrow'; eyebrow.textContent = 'READING LIST';
-        const heading = document.createElement('h1'); heading.textContent = '已标记论文';
-        const description = document.createElement('p'); description.className = 'generated'; description.textContent = '这里汇总当前浏览器中手动标记、准备进一步阅读的论文。';
-        const items = [];
-        reports.forEach((report) => report.papers.forEach((paper) => { if (isMarked(report.date, paper.id)) items.push({ report, paper }); }));
-        items.sort((a, b) => b.report.date.localeCompare(a.report.date));
-        if (!items.length) {
-          const empty = document.createElement('section'); empty.className = 'empty'; empty.textContent = '还没有标记论文。在任意论文卡片右上角点击“☆ 标记”即可加入这里。';
-          content.append(eyebrow, heading, description, empty); return;
-        }
-        const title = document.createElement('h2'); title.className = 'section-title'; title.textContent = `标记列表（${items.length} 篇）`;
-        const list = document.createElement('section'); list.className = 'paper-list';
+        content.replaceChildren(); const eyebrow = document.createElement('p'); eyebrow.className = 'eyebrow'; eyebrow.textContent = 'READING LIST';
+        const heading = document.createElement('h1'); heading.textContent = '已标记论文'; const description = document.createElement('p'); description.className = 'generated'; description.textContent = '这里汇总 GitHub 已同步和当前浏览器新增的所有标记论文。';
+        const items = []; reports.forEach((report) => report.papers.forEach((paper) => { if (isMarked(report.date, paper.id)) items.push({ report, paper }); })); items.sort((a, b) => b.report.date.localeCompare(a.report.date));
+        if (!items.length) { const empty = document.createElement('section'); empty.className = 'empty'; empty.textContent = '还没有标记论文。在任意论文卡片右上角点击“☆ 标记”即可加入这里。'; content.append(eyebrow, heading, description, empty); return; }
+        const title = document.createElement('h2'); title.className = 'section-title'; title.textContent = `标记列表（${items.length} 篇）`; const list = document.createElement('section'); list.className = 'paper-list';
         items.forEach(({ report, paper }, index) => list.append(createPaperCard(paper, index, report.date, { showOrigin: true, indexLabel: `已标记 ${String(index + 1).padStart(2, '0')}` })));
         content.append(eyebrow, heading, description, title, list);
       }
 
       function initialize() {
+        canonicalMarked = window.RESEARCH_USER_BOOKMARKS && typeof window.RESEARCH_USER_BOOKMARKS === 'object' ? window.RESEARCH_USER_BOOKMARKS : {};
+        canonicalEdits = window.RESEARCH_USER_ANNOTATIONS && typeof window.RESEARCH_USER_ANNOTATIONS === 'object' ? window.RESEARCH_USER_ANNOTATIONS : {};
+        refreshMergedUserData();
         const normalized = normalizeReports(window.RESEARCH_REPORTS); reports = normalized.reports; notices = normalized.notices;
         if (!reports.length) { showNotice(notices[0] || '日报数据为空。'); return; }
         activeDate = reports[0].date; renderSidebar(); renderReport();
@@ -417,6 +454,8 @@
 
       async function loadMonthlyReports() {
         try {
+          await loadLocalScript('user-data/bookmarks.js', true);
+          await loadLocalScript('user-data/annotations.js', true);
           await loadLocalScript('reports/manifest.js');
           const explicitSources = Array.isArray(window.RESEARCH_REPORT_SOURCES) && window.RESEARCH_REPORT_SOURCES.length;
           const sources = explicitSources ? window.RESEARCH_REPORT_SOURCES : (Array.isArray(window.RESEARCH_REPORT_MONTHS) ? window.RESEARCH_REPORT_MONTHS.map((month) => `reports/${month}.js`) : []);
@@ -430,6 +469,7 @@
       }
 
       markedButton.addEventListener('click', () => { activeView = 'marked'; renderSidebar(); renderMarkedList(); });
+      copySyncButton.addEventListener('click', copySyncPayload);
       loadMonthlyReports();
     })();
   </script>
