@@ -21,3 +21,12 @@ window.RESEARCH_USER_BOOKMARKS = {
     "markedAt": "2026-07-27T07:34:45.265Z"
   }
 };
+
+// Load the optional browser-to-GitHub synchronization controls.
+(() => {
+  if (document.querySelector('script[data-research-github-sync]')) return;
+  const script = document.createElement('script');
+  script.src = 'user-data/github-sync.js';
+  script.dataset.researchGithubSync = 'true';
+  document.head.append(script);
+})();
