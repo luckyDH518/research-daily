@@ -174,27 +174,27 @@
       ]);
       const desiredBookmarks = mergeOverlay(remoteBookmarks.data, loadLocal(MARKS_KEY));
       const desiredAnnotations = mergeOverlay(remoteAnnotations.data, loadLocal(EDITS_KEY));
-      const updates = [];
 
       if (stable(remoteAnnotations.data) !== stable(desiredAnnotations)) {
-        updates.push(updateRemoteFile(
+        status.textContent = '正在同步论文点评…';
+        await updateRemoteFile(
           ANNOTATIONS_PATH,
           remoteAnnotations.sha,
           annotationsFileContent(desiredAnnotations),
           'Sync research daily annotations',
           token
-        ));
+        );
       }
       if (stable(remoteBookmarks.data) !== stable(desiredBookmarks)) {
-        updates.push(updateRemoteFile(
+        status.textContent = '正在同步论文标记…';
+        await updateRemoteFile(
           BOOKMARKS_PATH,
           remoteBookmarks.sha,
           bookmarksFileContent(desiredBookmarks),
           'Sync research daily bookmarks',
           token
-        ));
+        );
       }
-      await Promise.all(updates);
 
       localStorage.removeItem(MARKS_KEY);
       localStorage.removeItem(EDITS_KEY);
