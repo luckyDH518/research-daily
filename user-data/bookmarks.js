@@ -19,6 +19,11 @@ window.RESEARCH_USER_BOOKMARKS = {
     "date": "2026-07-27",
     "paperId": "agent-benchmark-validity",
     "markedAt": "2026-07-27T07:34:45.265Z"
+  },
+  "2026-07-28::skillware-v2": {
+    "date": "2026-07-28",
+    "paperId": "skillware-v2",
+    "markedAt": "2026-07-28T05:46:15.127Z"
   }
 };
 
