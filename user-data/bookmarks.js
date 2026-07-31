@@ -24,6 +24,16 @@ window.RESEARCH_USER_BOOKMARKS = {
     "date": "2026-07-28",
     "paperId": "skillware-v2",
     "markedAt": "2026-07-28T05:46:15.127Z"
+  },
+  "2026-07-31::fincacheserve": {
+    "date": "2026-07-31",
+    "paperId": "fincacheserve",
+    "markedAt": "2026-07-31T09:19:56.056Z"
+  },
+  "2026-07-31::v-steer": {
+    "date": "2026-07-31",
+    "paperId": "v-steer",
+    "markedAt": "2026-07-31T09:20:43.542Z"
   }
 };
 
