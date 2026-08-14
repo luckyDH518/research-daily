@@ -24,5 +24,6 @@ window.RESEARCH_REPORT_SOURCES = [
   'reports/2026-08/2026-08-10.js',
   'reports/2026-08/2026-08-11.js',
   'reports/2026-08/2026-08-12.js',
-  'reports/2026-08/2026-08-13.js'
+  'reports/2026-08/2026-08-13.js',
+  'reports/2026-08/2026-08-14.js'
 ];
