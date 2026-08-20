@@ -5,7 +5,7 @@ window.RESEARCH_REPORTS.push({
   "generatedAt": "2026-08-20 10:00（北京时间）",
   "brief": {
     "summary": "今日严格筛选 6 篇值得看的论文：A 级 3 篇、B 级 3 篇、C 级 0 篇。核心主题是多 Agent 隐式通信安全、Harness 持续演化、Skill 选择训练、Skill 优化器训练以及 Judge/Evaluator 作为自演化系统关键依赖的可靠性。与 LLM / Agent 供应链安全最直接的是：潜在通信通道可能绕过公共 transcript 审计；Harness 即使在模型冻结时也会持续积累状态并产生遗忘；Skill 选择、Skill 更新和 Judge gate 都开始成为需要单独版本化与回归验证的行为依赖。",
-    "trendAssessment": "今天的趋势进一步确认：Agent 的长期行为状态已经扩展到模型外部。Harness、Skill selector、Skill optimizer、Judge 与 evaluator 都会独立改变后续轨迹，因此不能只锁模型版本。建议把它们分别纳入 Harness-SBOM、Skill-BOM 和 Evaluation-SBOM，并对更新执行历史保留、安全性、错误接受/拒绝和跨模型兼容回归。今日入选主要为 2026-08-19 新发论文，另纳入 2026-08-18 提交、仍处于当前 24–36 小时窗口且昨日未收录的 WER；未发现比这些更值得纳入的 v2/v3 重要更新。"
+    "trendAssessment": "今天的趋势进一步确认：Agent 的长期行为状态已经扩展到模型外部。Harness、Skill selector、Skill optimizer、Judge 与 evaluator 都会独立改变后续轨迹，因此不能只锁模型版本。建议把它们分别纳入 Harness-SBOM、Skill-BOM 和 Evaluation-SBOM，并对更新执行历史保留、安全性、错误接受/拒绝和跨模型兼容回归。今日入选主要为 2026-08-19 新发论文；另纳入 2026-08-18 提交、进入 2026-08-19 cs.CL 公开批次且此前日报未收录的 WER。未发现比这些更值得纳入的 v2/v3 重要更新。"
   },
   "topPicks": ["latent-multiagent-vla", "harness-continual-learning"],
   "topPickRationales": {
@@ -58,7 +58,7 @@ window.RESEARCH_REPORTS.push({
       "summary": "发现长程 Agent 中 Skill 选择 token 会发生 selector credit starvation，并通过独立的局部 credit channel 直接训练正确 Skill 选择。",
       "importance": "大规模 Skill Library 中，Agent 必须在执行中决定读取哪个 Skill。普通序列级 outcome reward 会把几千个执行 token 与极少数 Skill 名称 token 使用同一 advantage，导致关键选择几乎得不到有效梯度，甚至因为后续执行失败而被错误惩罚。",
       "methodHighlights": "SkillGate 把 credit 拆为两个互斥通道：任务结果只更新执行 token；另一个 action-local advantage 只更新 Skill 名称 token，并且仅在单次 read 选择正确时为正。论文审计 12,800 条 on-policy 轨迹，验证选择 token 的 loss share、符号错误和真实价值，并在五个 Agent benchmark、16-candidate slate 上统一评测。",
-      "keyFindings": "选择 Skill 的 token 只占轨迹 loss 权重中位数 0.14%，从短轨迹到长轨迹进一步稀释约 7 倍；近两成以上、总体接近两成到四成的正确 Skill 选择会继承负 advantage，最长轨迹中更严重。正确 read 在 matched prompt groups 中价值为 +11.2pp。SkillGate 将 9B 策略总体成功率从 SFT 初始化的 40.8% 提升至 53.2%，高于 outcome-only RL 的 47.0%，并把 misleading-skill exposure 降到 21.8%。",
+      "keyFindings": "选择 Skill 的 token 只占轨迹 loss 权重中位数 0.14%，从短轨迹到长轨迹进一步稀释约 7 倍；近四成正确 Skill 选择会因为后续执行失败而继承负 advantage，最长轨迹中更严重。正确 read 在 matched prompt groups 中价值为 +11.2pp。SkillGate 将 9B 策略总体成功率从 SFT 初始化的 40.8% 提升至 53.2%，高于 outcome-only RL 的 47.0%，并把 misleading-skill exposure 降到 21.8%。",
       "limitations": "方法假设单次 read 有明确的正确 Skill，可获得 oracle-style selection supervision；现实任务可能需要多个 Skill、组合依赖或没有唯一 gold skill。选择正确也不意味着 Skill 本身安全、无恶意内容或与权限策略兼容。",
       "inspiration": "论文直接结论：Skill 选择是长轨迹中的高价值独立决策，不能只依赖序列级 outcome credit。研究启发：Skill-BOM 与训练流水线应单独记录 selector policy、candidate slate、Skill ID/version、选择 credit 与后续执行结果；还可把 publisher trust、permission 和风险成本加入局部选择 reward。",
       "valueJudgment": "非常值得精读和复现。直接关系到大规模 Skill 生态中的选择训练和错误 Skill 暴露。",
@@ -69,7 +69,7 @@ window.RESEARCH_REPORTS.push({
       "title": "Write, Execute, Refine: From Skill Followers to Skill Optimizers via Reinforcement Learning from Execution Feedback",
       "url": "https://arxiv.org/abs/2608.17587",
       "authorsAndInstitutions": "Kang Peng、Zhiwei Zhang、Yichen Zhang、Zezhong Wang、Yiming Du、Geng Tu、Baojun Wang、Bin Liang、Ruifeng Xu、Kam-Fai Wong；论文首页标注哈尔滨工业大学（深圳/哈尔滨）、香港中文大学、教育部高可信软件技术重点实验室与 Huawei Technologies Co., Ltd.。",
-      "qualitySignals": "作者与机构信号：强；版本动态：arXiv:2608.17587 v1，2026-08-18 09:52 UTC 提交，仍在当前 24–36 小时窗口且此前日报未收录；开源与数据：官方代码 https://github.com/littlepkk/WER4skill-optimizer-training 。",
+      "qualitySignals": "作者与机构信号：强；版本动态：arXiv:2608.17587 v1，2026-08-18 09:52 UTC 提交，进入 2026-08-19 cs.CL 公开批次，且此前日报未收录；开源与数据：官方代码 https://github.com/littlepkk/WER4skill-optimizer-training 。",
       "openSourceAndData": [{"label":"WER 官方 GitHub","url":"https://github.com/littlepkk/WER4skill-optimizer-training","note":"论文直接链接"}],
       "tags": ["Agent Skill", "Skill Optimization", "Reinforcement Learning", "Tool Use", "Self-improvement"],
       "summary": "训练一个独立 Skill Optimizer，让它从自己此前写出的 Skill 在真实执行中的成功/失败轨迹中学习如何改写下一版 Skill。",
