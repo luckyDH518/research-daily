@@ -1,5 +1,5 @@
 // 月度日报清单：新增月份后只需在此数组末尾登记 YYYY-MM。
-window.RESEARCH_REPORT_MONTHS = ['2026-07', '2026-08'];
+window.RESEARCH_REPORT_MONTHS = ['2026-07', '2026-08', '2026-09'];
 
 // 线上发布时按月目录拆成多个小文件，避免单个数据文件过大。
 window.RESEARCH_REPORT_SOURCES = [
@@ -36,5 +36,6 @@ window.RESEARCH_REPORT_SOURCES = [
   'reports/2026-08/2026-08-26.js',
   'reports/2026-08/2026-08-27.js',
   'reports/2026-08/2026-08-28.js',
-  'reports/2026-08/2026-08-31.js'
+  'reports/2026-08/2026-08-31.js',
+  'reports/2026-09/2026-09-01.js'
 ];
